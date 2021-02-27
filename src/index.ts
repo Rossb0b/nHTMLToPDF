@@ -17,9 +17,10 @@ export async function initBrowser(): Promise<Browser> {
   }
 }
 
-export interface pdfFile {
+export interface HTML {
   content?: string,
   url?: string,
+  file?: string,
   options?: {}
 }
 
@@ -61,42 +62,45 @@ export interface genPDFPayload {
  *
  * @export
  * @param {Browser} browser
- * @param {pdfFile[]} files
+ * @param {HTML[]} htmls
  * @param {PDFOptions} [options]
  * @param {boolean} [toStream=false]
  * @returns {Promise<genPDFPayload>}
  */
-export async function generatePDF(browser: Browser, files: pdfFile[], options?: PDFOptions, toStream: boolean = false): Promise<genPDFPayload> {
+export async function generatePDF(browser: Browser, htmls: HTML[], options?: PDFOptions, toStream: boolean = false): Promise<genPDFPayload> {
   const pdfs = [];
   let pdf;
   let res: genPDFPayload = {};
 
-  if (toStream && files.length > 1) {
+  if (toStream && htmls.length > 1) {
     throw new Error("Cannot handle stream for multiple files");
   }
 
   try {
     const page = await browser.newPage();
 
-    for (let file of files) {
-      pdf = JSON.parse(JSON.stringify(file));
+    for (let html of htmls) {
+      pdf = JSON.parse(JSON.stringify(html));
       pdf['options'] = options ?? undefined;
 
-      if (file.content) {
-        const template = compile(file.content);
-        const html = template(file?.options ?? {});
+      if (html.content) {
+        const template = compile(html.content);
+        const tpHtml = template(html?.options ?? {});
         delete pdf['content'];
 
-        await page.setContent(html, {
+        await page.setContent(tpHtml, {
           waitUntil: 'networkidle0'
         });
       }
-      else {
+      else if (html.url) {
         delete pdf['url'];
 
-        await page.goto(file.url!, {
+        await page.goto(html.url!, {
             waitUntil: 'networkidle0'
         });
+      }
+      else if (html.file) {
+
       }
 
       if (toStream) {
